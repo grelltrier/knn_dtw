@@ -1,0 +1,45 @@
+Rust DTW before PruningDTW
+
+Location : 430264
+Distance : 3.7906991699901917
+Data Scanned : 1000000
+Total Execution Time : 2.843566163s
+
+Pruned by Jump      : 0.0000%
+Pruned by LB_Kim    : 22.6827%
+Pruned by LB_Keogh  : 35.9776%
+Pruned by LB_Keogh2 : 36.5951%
+DTW Calculation     : 4.7446%
+
+[user@archlnx dtw]$ cargo run --release
+    Finished release [optimized] target(s) in 0.07s
+     Running `target/release/dtw`
+..
+Location : 430264
+Distance : 3.7906991699901917
+Data Scanned : 1000000
+Total Execution Time : 2.872726797s
+
+Pruned by Jump      : 0.0000%
+Pruned by LB_Kim    : 22.6827%
+Pruned by LB_Keogh  : 35.9776%
+Pruned by LB_Keogh2 : 36.5951%
+DTW Calculation     : 4.7446%
+
+
+
+
+
+WITH JUMPING
+
+Location : 430264
+Distance : 3.7906991699901917
+Data Scanned : 1000000
+Total Execution Time : 1.421277409s
+
+Pruned by Jump      : 57.7814%
+Pruned by LB_Kim    : 16.4837%
+Pruned by LB_Keogh  : 15.1936%
+Pruned by LB_Keogh2 : 7.7391%
+DTW Calculation     : 2.8022%
+

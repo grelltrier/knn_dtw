@@ -1,0 +1,9 @@
+[package]
+name = "knn_dtw"
+version = "0.1.0"
+authors = ["pentamassiv <pentamassiv@posteo.de>"]
+edition = "2018"
+
+[dependencies]
+dtw = { git = "https://github.com/grelltrier/dtw"}
+dtw_cost = { git = "https://github.com/grelltrier/dtw_cost"}
