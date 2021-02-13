@@ -457,7 +457,7 @@ where
                                             let dist = dtw::ucr_improved::dtw(
                                                 &tz,
                                                 &query,
-                                                &cb,
+                                                Some(&cb),
                                                 sakoe_chiba_band,
                                                 bsf,
                                                 &cost_fn,
