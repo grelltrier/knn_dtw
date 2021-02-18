@@ -1,6 +1,6 @@
 [![dependency status](https://deps.rs/repo/github/grelltrier/knn_dtw/status.svg)](https://deps.rs/repo/github/grelltrier/knn_dtw)
 
-# kNN_DTW
+# knn_dtw
 This is an implementation of a k-Nearest Neighbor search using Dynamic Time Warping. It is implemented in 100% safe Rust code and does not rely on any dependencies. It is using all the optimizations suggested in the UCR_URS suite and the EAPrunedDTW. As far as I am aware of, this implementation should yield state-of-the-art time complexity and a space complexity of O(n).
 
 ## Usage
