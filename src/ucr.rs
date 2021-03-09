@@ -418,6 +418,7 @@ where
                                         };
 
                                         // Cumulativly sum the keogh diffs from the back
+                                        cb[query.len() - 1] = 0.0;
                                         for k in (1..query.len() - 2).rev() {
                                             cb[k] = keogh_diffs[k] + cb[k + 1];
                                         }
