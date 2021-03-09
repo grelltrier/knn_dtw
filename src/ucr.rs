@@ -10,7 +10,6 @@ where
     F: Fn(&f64, &f64) -> f64,
 {
     k_nearest: usize, // k Nearest Neighbors
-    jump: bool,
     sort: bool,
     normalize: bool,
     cost_fn: F,
@@ -23,7 +22,6 @@ where
 {
     pub fn new(
         k_nearest: usize,
-        jump: bool,
         sort: bool,
         normalize: bool,
         cost_fn: F,
@@ -32,7 +30,6 @@ where
     ) -> Self {
         Settings {
             k_nearest,
-            jump,
             sort,
             normalize,
             cost_fn,
@@ -46,7 +43,6 @@ impl Default for Settings<for<'r, 's> fn(&'r f64, &'s f64) -> f64> {
     fn default() -> Self {
         Settings {
             k_nearest: 1,
-            jump: true,
             sort: true,
             normalize: true,
             cost_fn: dtw_cost::sq_l2_dist_f64,
@@ -63,7 +59,6 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let _ = writeln!(f, "Settings:");
         let _ = writeln!(f, "  k_nearest   : {}", self.k_nearest);
-        let _ = writeln!(f, "  jump        : {}", self.jump);
         let _ = writeln!(f, "  sort        : {}", self.sort);
         let _ = writeln!(f, "  normalize   : {}", self.normalize);
         let _ = writeln!(f, "  window_rate : {}", self.window_rate);
@@ -119,7 +114,6 @@ impl Eq for SearchResult {}
 // TODO: Check if type of fields should not be usize instead??
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SearchStats {
-    pub jump_times: usize,
     pub kim: usize,
     pub keogh: usize,
     pub keogh2: usize,
@@ -129,25 +123,20 @@ impl SearchStats {
     pub fn print(&self, i: usize) {
         println!("Stats:");
         println!(
-            "jump_times: {}, kim: {}, keogh: {}, keogh2: {}",
-            self.jump_times, self.kim, self.keogh, self.keogh2
+            "kim: {}, keogh: {}, keogh2: {}",
+            self.kim, self.keogh, self.keogh2
         );
         let i = i as f64;
-        let jump_times = self.jump_times as f64;
         let kim = self.kim as f64;
         let keogh = self.keogh as f64;
         let keogh2 = self.keogh2 as f64;
 
-        println!(
-            "  Pruned by Jump      : {:>7.4} %",
-            (jump_times / i) * 100.0
-        );
         println!("  Pruned by LB_Kim    : {:>7.4} %", (kim / i) * 100.0);
         println!("  Pruned by LB_Keogh  : {:>7.4} %", (keogh / i) * 100.0);
         println!("  Pruned by LB_Keogh2 : {:>7.4} %", (keogh2 / i) * 100.0);
         println!(
             "  DTW Calculation     : {:>7.4} %",
-            100.0 - ((jump_times + kim + keogh + keogh2) / i * 100.0)
+            100.0 - ((kim + keogh + keogh2) / i * 100.0)
         );
     }
 }
@@ -180,7 +169,7 @@ pub fn insert_into_k_bsf<T>(new_bsf: (T, f64), old_k_bsf: &mut Vec<(T, f64)>) {
 // The function calculates the cost/distance between the 'end' of the sequences and all other values from the other sequence. The minimal distance is returned
 fn min_dist<T, F>(seq_a: (&T, &[T]), seq_b: (&T, &[T]), cost_fn: &F) -> f64
 where
-    T: Div<Output = T> + Sub<Output = T> + Copy, // TODO: Should this Copy be added?? Compiler error if not added
+    T: Div<Output = T> + Sub<Output = T> + Copy,
     F: Fn(&T, &T) -> f64,
 {
     // Compare the two 'ends'
@@ -242,7 +231,6 @@ where
             sort,
             normalize,
             cost_fn,
-            jump,
             epoch,
         } = self.settings;
 
@@ -251,7 +239,7 @@ where
         let mut loc; // Temporarily stores location of best match
 
         let mut query: Vec<f64> = Vec::new();
-        let (mut jump_times, mut kim, mut keogh, mut keogh2) = (0, 0, 0, 0);
+        let (mut kim, mut keogh, mut keogh2) = (0, 0, 0);
         let (mut ex, mut ex2) = (0.0, 0.0);
 
         // start the clock
@@ -377,7 +365,6 @@ where
 
                 ex = 0.0;
                 ex2 = 0.0;
-                let mut jump_size: usize = 0;
 
                 // Do main task here..
                 for i in 0..ep {
@@ -394,95 +381,100 @@ where
                     // Double the size for avoiding using modulo "%" operator
                     t[(i % query.len()) + query.len()] = data;
 
-                    jump_size = jump_size.saturating_sub(1);
-
                     // Start the task when there are more than m-1 points in the current chunk
                     if i >= query.len() - 1 {
                         // compute the start location of the data in the current circular array, t
                         j = (i + 1) % query.len();
 
-                        if !jump || jump_size == 0 {
-                            mean = ex / query.len() as f64;
-                            std = f64::sqrt((ex2 / query.len() as f64) - mean.powi(2));
+                        mean = ex / query.len() as f64;
+                        std = f64::sqrt((ex2 / query.len() as f64) - mean.powi(2));
 
-                            // the start location of the data in the current chunk
-                            let i_cap = i - (query.len() - 1);
+                        // the start location of the data in the current chunk
+                        let i_cap = i - (query.len() - 1);
 
-                            // Use a constant lower bound to prune the obvious subsequence
-                            let (lb_kim, jump_size_tmp) =
-                                lb_kim_hierarchy(&t, &query, j, mean, std, bsf, &cost_fn);
-                            jump_size = jump_size_tmp;
+                        // Use a constant lower bound to prune the obvious subsequence
+                        let lb_kim = lb_kim_hierarchy(&t, &query, j, mean, std, bsf, &cost_fn);
 
-                            //////
-                            if lb_kim < bsf {
-                                let (lb_keogh_query, keogh_diffs, jump_tmp) = lb_keogh_cumulative(
-                                    &order, &t, &uo, &lo, None, j, mean, std, bsf, false, &cost_fn,
+                        //////
+                        if lb_kim < bsf {
+                            let (lb_keogh_query, keogh_diffs) = lb_keogh_cumulative(
+                                &order, &t, &uo, &lo, None, j, mean, std, bsf, false, &cost_fn,
+                            );
+
+                            if lb_keogh_query < bsf {
+                                let (lb_keogh_sum, keogh_diffs) = lb_keogh_cumulative(
+                                    &order,
+                                    &qo,
+                                    &u_buff,
+                                    &l_buff,
+                                    Some(keogh_diffs),
+                                    i_cap,
+                                    mean,
+                                    std,
+                                    bsf,
+                                    true,
+                                    &cost_fn,
                                 );
-                                jump_size = jump_tmp;
 
-                                if lb_keogh_query < bsf {
-                                    let (lb_keogh_sum, keogh_diffs, jump_tmp) = lb_keogh_cumulative(
-                                        &order,
-                                        &qo,
-                                        &u_buff,
-                                        &l_buff,
-                                        Some(keogh_diffs),
-                                        i_cap,
-                                        mean,
-                                        std,
-                                        bsf,
-                                        true,
-                                        &cost_fn,
-                                    );
-                                    jump_size = jump_tmp;
-
-                                    if lb_keogh_sum < bsf {
+                                if lb_keogh_sum < bsf {
+                                    {
+                                        /*         /// Choose better lower bound between lb_keogh and lb_keogh2 to be used in early abandoning DTW
+                                        /// Note that cb and cb2 will be cumulative summed here.
+                                        if (lb_k > lb_k2)
                                         {
-                                            // Cumulativly sum the keogh diffs from the back
-                                            // The value at index 0 is always ignored so we don't bother calculating it correctly
-                                            for k in (1..query.len() - 2).rev() {
-                                                cb[k] = keogh_diffs[k] + cb[k + 1];
-                                            }
-
-                                            // Take another linear time to compute z_normalization of t.
-                                            // Note that for better optimization, this can merge to the previous function.
-                                            if normalize {
-                                                tz = t
-                                                    .iter_mut()
-                                                    .skip(j)
-                                                    .take(query.len())
-                                                    .map(|entry| (*entry - mean) / std)
-                                                    .collect();
-                                            }
-                                            let dist = dtw::ucr_improved::dtw(
-                                                &tz,
-                                                &query,
-                                                Some(&cb),
-                                                sakoe_chiba_band,
-                                                bsf,
-                                                &cost_fn,
-                                            );
-
-                                            if dist < bsf {
-                                                // loc is the real starting location of the nearest neighbor in the file
-                                                loc = it * (epoch - query.len() + 1) + i + 1
-                                                    - query.len();
-                                                // Update bsf
-                                                insert_into_k_bsf((loc, dist), &mut k_best);
-                                                bsf = k_best[k_nearest - 1].1;
-                                            }
+                                            cb[m - 1] = cb1[m - 1];
+                                            for (k = m - 2; k >= 0; k--)
+                                                cb[k] = cb[k + 1] + cb1[k];
                                         }
-                                    } else {
-                                        keogh2 += 1;
+                                        else
+                                        {
+                                            cb[m - 1] = cb2[m - 1];
+                                            for (k = m - 2; k >= 0; k--)
+                                                cb[k] = cb[k + 1] + cb2[k];
+                                        }*/
+
+                                        // Cumulativly sum the keogh diffs from the back
+                                        // The value at index 0 is always ignored so we don't bother calculating it correctly
+                                        for k in (1..query.len() - 2).rev() {
+                                            cb[k] = keogh_diffs[k] + cb[k + 1];
+                                        }
+
+                                        // Take another linear time to compute z_normalization of t.
+                                        // Note that for better optimization, this can merge to the previous function.
+                                        if normalize {
+                                            tz = t
+                                                .iter_mut()
+                                                .skip(j)
+                                                .take(query.len())
+                                                .map(|entry| (*entry - mean) / std)
+                                                .collect();
+                                        }
+                                        let dist = dtw::ucr_improved::dtw(
+                                            &tz,
+                                            &query,
+                                            Some(&cb),
+                                            sakoe_chiba_band,
+                                            bsf,
+                                            &cost_fn,
+                                        );
+
+                                        if dist < bsf {
+                                            // loc is the real starting location of the nearest neighbor in the file
+                                            loc = it * (epoch - query.len() + 1) + i + 1
+                                                - query.len();
+                                            // Update bsf
+                                            insert_into_k_bsf((loc, dist), &mut k_best);
+                                            bsf = k_best[k_nearest - 1].1;
+                                        }
                                     }
                                 } else {
-                                    keogh += 1;
+                                    keogh2 += 1;
                                 }
                             } else {
-                                kim += 1;
+                                keogh += 1;
                             }
                         } else {
-                            jump_times += 1
+                            kim += 1;
                         }
                         // Reduce obsolute points from sum and sum square
                         ex -= t[j];
@@ -506,12 +498,7 @@ where
         //let keogh = keogh as f64;
         //let keogh2 = keogh2 as f64;
 
-        let supplemental_stats = Some(SearchStats {
-            jump_times,
-            kim,
-            keogh,
-            keogh2,
-        });
+        let supplemental_stats = Some(SearchStats { kim, keogh, keogh2 });
         self.result = Some(SearchResult {
             k_best,
             duration,
@@ -581,15 +568,17 @@ pub fn upper_lower_lemire(time_series: &[f64], w: usize) -> (Vec<f64>, Vec<f64>)
     (lower, upper)
 }
 
-// TODO: Double check comments for correctness! Since adding support for sequences of different lengths, they most likely have errors
 // Calculate the lower bound according to Kim
 // The paper "An index-based approach for similarity search supporting time warping in large sequence databases,"
 // (https://doi.org/10.1109/ICDE.2001.914875) elaborates on this lower bound
 // The time complexity to calculate it is O(1)
-// Improvements over the UCR suite ONLY for the case of subsequence search:
-//    If the minimal cost between observations is bigger then the bsf, these observations can not be included in the best matching subsequence
-//    and all subsequences including these values can be skipped. We can only do so when we look at the observations at the front though,
-//    because the observations could be matched with later observations in the next subsequence that could yield a better match.
+// Inputs:
+//   t:        candidate's sequence of observations (a copy of itself must be appended to avoid the modulo)
+//   q:        query's sequence of observations
+//   mean:     mean of the candidate sequence
+//   std:      std of the candidate sequence
+//   bsf:      best DTW distance so far
+//   cost_fn:  function with which to calculate the cost of a match between observations
 pub fn lb_kim_hierarchy<F>(
     t: &[f64],
     q: &[f64],
@@ -598,13 +587,9 @@ pub fn lb_kim_hierarchy<F>(
     std: f64,
     bsf: f64,
     cost_fn: &F,
-) -> (f64, usize)
+) -> f64
 where
     F: Fn(&f64, &f64) -> f64 + Copy,
-    //where
-    //T: Div<Output = T> + Sub<Output = T> + Copy, // TODO: Should this Copy be added?? Compiler error if not added
-    // F: Fn(&f64, &f64) -> f64,
-    //F: Fn(&T, &T) -> f64,
 {
     // Number of points at the beginning and end that are used to calculate the LB_Kim
     // This number MUST be between 0 and 2*q.len() but you probably don't want to change it from the default of 3
@@ -621,10 +606,8 @@ where
     let mut end_value; // Value of the end
 
     let q_begin_idx = [0, q.len() - 1]; // The index from which the points are counted from. The first index is for the front and the second for the back
-                                        // It is important to check the front first because it enables us to jump if the distance exceeds the bsf
                                         // This variable is mostly necessary to avoid duplicate code and handle both cases (start at front/back) with one for loop
-    let t_begin_idx = [0, t.len() / 2 - 1]; // TODO: Double check if the following comment is still true or if this can be avoided
-                                            // The div by 2 is necessary, because t is twice as long to avoid the modulo
+    let t_begin_idx = [0, t.len() / 2 - 1]; // The div by 2 is necessary, because t is twice as long to avoid the modulo
 
     let mut candidate_z = [Vec::new(), Vec::new()]; // Stores the z-normalized values of the candidate query
                                                     // The first Vec is for when the subsequence starts at the front, the second for when it starts at the back
@@ -658,36 +641,34 @@ where
             // Add the distance to the lb. The dtw calculation does a similar many to many comparison and we could never get a lower value than lb
             lb += dist;
 
-            // If the distance was larger then bsf ..
-            if dist >= bsf {
-                // .. and if we got the minimal distance from the front values, we can jump those values, because there is no warping possible, that
-                let jump_size = if idx == 0 { 1 + i } else { 1 };
-                return (lb, jump_size);
-            }
-
             // If the lb is greater than bsf, we move to the next candidate subsequence
             if lb >= bsf {
-                return (lb, 1);
+                return lb;
             }
 
             // Store the z-normalized value for the next calculations
             candidate_z[idx].push(end_value);
         }
-        // If the lb was not greater then bsf, we have a new lb and return it
     }
-    (lb, 1)
+    // If the lb was not greater then bsf, we have a new lb and return it
+    lb
 }
 
 /// This function calculates the differences between the upper and lower envelopes of a time series with another time series
 /// It is a cheap calculation compared to DTW
 ///
-/// Variable Explanation,
-/// order          : sorted indices for the query
-/// data           : a circular array keeping the current data
-/// upper_envelope : upper envelope for the sequence
-/// lower_envelope : lower envelops for the sequence
-/// cum_bound      : previoulsy calculated bound that can be added to
-/// j              : index of the starting location in the
+/// Inputs:
+/// order              : sorted indices for the query
+/// data               : a circular array keeping the current data
+/// upper_envelope     : upper envelope for the sequence
+/// lower_envelope     : lower envelops for the sequence
+/// cum_bound          : previoulsy calculated bound that can be added to
+/// j                  : index of the starting location in the
+/// wrapped_candidate  : flag to signal if the candidate or the query sequence is wrapped in the envelope
+/// mean               : mean of the wrapped sequence
+/// std                : std of the wrapped sequence
+/// bsf                : best DTW distance so far
+/// cost_fn            : function with which to calculate the cost of a match between observations
 ///
 /// This function only works when order, data, the envelopes and the cum_bound are of the same lengths. Otherwise the method panics!
 fn lb_keogh_cumulative<F>(
@@ -700,14 +681,11 @@ fn lb_keogh_cumulative<F>(
     mean: f64,
     std: f64,
     bsf: f64,
-    data_bound: bool,
+    wrapped_candidate: bool,
     cost_fn: &F,
-) -> (f64, Vec<f64>, usize)
+) -> (f64, Vec<f64>)
 where
     F: Fn(&f64, &f64) -> f64 + Copy,
-    //where
-    // T: Div<Output = T> + Sub<Output = T>,
-    //  F: Fn(&f64, &f64) -> f64,
 {
     let mut cum_bound = if let Some(mut bound) = cum_bound {
         {
@@ -727,7 +705,7 @@ where
     let mut jump = order[0];
 
     for i in 0..order.len() {
-        if data_bound {
+        if wrapped_candidate {
             q_z = data[i];
             u_z = (upper_envelope[j + order[i]] - mean) / std;
             l_z = (lower_envelope[j + order[i]] - mean) / std;
@@ -756,5 +734,5 @@ where
             break;
         }
     }
-    (lb, cum_bound, jump + 1)
+    (lb, cum_bound)
 }
