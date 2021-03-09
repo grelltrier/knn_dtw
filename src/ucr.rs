@@ -654,7 +654,7 @@ where
     lb
 }
 
-/// This function calculates the differences between the upper and lower envelopes of a time series with another time series
+/// This function calculates the differences between the upper and lower envelopes of a time series with another sequence
 /// It is a cheap calculation compared to DTW
 ///
 /// Inputs:
@@ -702,7 +702,6 @@ where
     let mut diff;
 
     let mut lb: f64 = 0.0;
-    let mut jump = order[0];
 
     for i in 0..order.len() {
         if wrapped_candidate {
@@ -713,10 +712,6 @@ where
             q_z = (data[(j + order[i])] - mean) / std;
             u_z = upper_envelope[i];
             l_z = lower_envelope[i];
-        }
-
-        if order[i] < jump {
-            jump = order[i]
         }
 
         if q_z > u_z {
