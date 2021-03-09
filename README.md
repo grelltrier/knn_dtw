@@ -12,9 +12,6 @@ Add the dependency to your Cargo.toml and you can use the provided functions
 ## Fixed bugs/differences in regards to URC suite
 - Fixed sorting bug
   The UCR suite suggest sorting the query to improve the speed. It is not properly sorting though
-- The cumulative bound (variable cb) ends with zero
-  The cb[i] represents the lower bound of the distance that we will accumulate from the index i until the end. Once we reached the end,
-  no further cost can accumulate. If cb wasn't zero at the end, we would require the DTW of the candidate sequence to be at least by that much better than the bsf
 - Using an implementation similar to the faster EAPrunedDTW
 - Cost function can be easily replaced
 - Observations can have any type
@@ -30,6 +27,10 @@ Add the dependency to your Cargo.toml and you can use the provided functions
 - Use the z-normalized data sequence from the calculation of the lower bounds
 - parallel computation
 - Allow sets of candidate sequences or subsequences
-- Allow the calculation for query where observations can be added
+- Allow the calculation for a query to which observations can be added
+- Move calculation of upper_lower_lemire to later steps. Maybe it can be skipped for some sequences
+  (Don't do the whole calculation of the envelope up front but only when needed)
+- Reuse the LB\_Keogh envelope
+- The candidate sequence is getting normalized twice, once when calculating the lower bound of Keogh and before the calculation of the DTW
 
 ## Changelog
