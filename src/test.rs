@@ -30,7 +30,7 @@ fn knn_search() {
     let correct_stats = Some(SearchStats {
         kim: 226827,
         keogh: 409926,
-        keogh2: 335631, // this used to be 365951, but increased after using the sum of the lb_keough as the cumulative bound for early abandoning
+        keogh2: 318994,
     });
     let correct_result = SearchResult {
         k_best,
@@ -152,7 +152,6 @@ fn lb_kim_hierarchy_test() {
     // Test steps
     // LB > bsf after checking the first point
     // dist > bsf
-    // jump = 1 since it was the first point
     let lb = crate::ucr::lb_kim_hierarchy(
         &[
             2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
@@ -258,7 +257,6 @@ fn lb_kim_hierarchy_test() {
     assert!((lb - 1.0).abs() < 0.0000000001);
 
     // The fourth point from the back is never checked so lb=0 < bsf
-    // No jumping
     let lb = crate::ucr::lb_kim_hierarchy(
         &[
             0., 0., 0., 0., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,

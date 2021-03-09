@@ -397,44 +397,27 @@ where
 
                         //////
                         if lb_kim < bsf {
-                            let (lb_keogh_query, keogh_diffs) = lb_keogh_cumulative(
-                                &order, &t, &uo, &lo, None, j, mean, std, bsf, false, &cost_fn,
+                            let (lb_keogh_query, keogh_diffs_query) = lb_keogh_cumulative(
+                                &order, &t, &uo, &lo, j, mean, std, bsf, false, &cost_fn,
                             );
 
                             if lb_keogh_query < bsf {
-                                let (lb_keogh_sum, keogh_diffs) = lb_keogh_cumulative(
-                                    &order,
-                                    &qo,
-                                    &u_buff,
-                                    &l_buff,
-                                    Some(keogh_diffs),
-                                    i_cap,
-                                    mean,
-                                    std,
-                                    bsf,
-                                    true,
-                                    &cost_fn,
-                                );
+                                let (lb_keogh_candidate, keogh_diffs_candidate) =
+                                    lb_keogh_cumulative(
+                                        &order, &qo, &u_buff, &l_buff, i_cap, mean, std, bsf, true,
+                                        &cost_fn,
+                                    );
 
-                                if lb_keogh_sum < bsf {
+                                if lb_keogh_candidate < bsf {
                                     {
-                                        /*         /// Choose better lower bound between lb_keogh and lb_keogh2 to be used in early abandoning DTW
-                                        /// Note that cb and cb2 will be cumulative summed here.
-                                        if (lb_k > lb_k2)
-                                        {
-                                            cb[m - 1] = cb1[m - 1];
-                                            for (k = m - 2; k >= 0; k--)
-                                                cb[k] = cb[k + 1] + cb1[k];
-                                        }
-                                        else
-                                        {
-                                            cb[m - 1] = cb2[m - 1];
-                                            for (k = m - 2; k >= 0; k--)
-                                                cb[k] = cb[k + 1] + cb2[k];
-                                        }*/
+                                        // Choose the tighter lower bound between lb_keogh_query and lb_keogh_candidate to be used in early abandoning DTW
+                                        let keogh_diffs = if lb_keogh_query > lb_keogh_candidate {
+                                            keogh_diffs_query
+                                        } else {
+                                            keogh_diffs_candidate
+                                        };
 
                                         // Cumulativly sum the keogh diffs from the back
-                                        // The value at index 0 is always ignored so we don't bother calculating it correctly
                                         for k in (1..query.len() - 2).rev() {
                                             cb[k] = keogh_diffs[k] + cb[k + 1];
                                         }
@@ -482,7 +465,7 @@ where
                     }
                 }
 
-                // If the size of last chunk is less then EPOCH, then no more data and terminate.
+                // If the size of last chunk is less then EPOCH, then there is no more data so the program can terminate
                 if ep < epoch {
                     done = true;
                 } else {
@@ -494,9 +477,6 @@ where
         let time_end = Instant::now();
         let duration = time_end.saturating_duration_since(time_start);
         let i = it * (epoch - query.len() + 1) + ep;
-        //let kim = kim as f64;
-        //let keogh = keogh as f64;
-        //let keogh2 = keogh2 as f64;
 
         let supplemental_stats = Some(SearchStats { kim, keogh, keogh2 });
         self.result = Some(SearchResult {
@@ -676,7 +656,6 @@ fn lb_keogh_cumulative<F>(
     data: &[f64],
     upper_envelope: &[f64],
     lower_envelope: &[f64],
-    cum_bound: Option<Vec<f64>>,
     j: usize,
     mean: f64,
     std: f64,
@@ -687,21 +666,13 @@ fn lb_keogh_cumulative<F>(
 where
     F: Fn(&f64, &f64) -> f64 + Copy,
 {
-    let mut cum_bound = if let Some(mut bound) = cum_bound {
-        {
-            bound[0] = 0.0; // Needs to be deleted, otherwise the first point would count twice
-            bound[data.len() - 1] = 0.0; // Needs to be deleted, otherwise the last point would count twice
-            bound
-        }
-    } else {
-        vec![0.0; data.len()]
-    };
     let mut q_z;
     let mut u_z;
     let mut l_z;
     let mut diff;
 
     let mut lb: f64 = 0.0;
+    let mut keogh_diffs = vec![0.0; data.len()];
 
     for i in 0..order.len() {
         if wrapped_candidate {
@@ -722,12 +693,12 @@ where
             diff = 0.0;
         }
 
-        lb += diff + cum_bound[order[i]];
-        cum_bound[order[i]] += diff;
+        lb += diff;
+        keogh_diffs[order[i]] = diff;
 
         if lb >= bsf {
             break;
         }
     }
-    (lb, cum_bound)
+    (lb, keogh_diffs)
 }

@@ -7,7 +7,7 @@ fn main() {
 
     //let settings = Settings::default();
     let settings = Settings::new(
-        1,                        // k nearest Neighbors
+        1,                        // k nearest neighbors
         true,                     // sort:
         true,                     // normalize:
         dtw_cost::sq_l2_dist_f64, // cost_fn
