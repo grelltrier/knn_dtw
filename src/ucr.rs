@@ -111,7 +111,6 @@ impl PartialEq for SearchResult {
 }
 impl Eq for SearchResult {}
 
-// TODO: Check if type of fields should not be usize instead??
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SearchStats {
     pub kim: usize,
@@ -264,8 +263,6 @@ where
                 .collect();
         }
 
-        // TODO: This is done differently in C implementation, double check it
-        // sakoe_chiba_band  : size of Sakoe-Chiba warpping band
         let sakoe_chiba_band = if window_rate <= 1.0 {
             (window_rate * query.len() as f64).floor() as usize
         } else {
@@ -293,6 +290,7 @@ where
         let mut uo: Vec<f64> = Vec::new();
         let mut lo: Vec<f64> = Vec::new();
 
+        // Sort the query and its envelops
         if sort {
             indexed_query.sort_by(|a, b| {
                 (b.1.abs())
@@ -395,13 +393,15 @@ where
                         // Use a constant lower bound to prune the obvious subsequence
                         let lb_kim = lb_kim_hierarchy(&t, &query, j, mean, std, bsf, &cost_fn);
 
-                        //////
+                        // Continue if the lower bound of Kim is lower then the best so for
                         if lb_kim < bsf {
+                            // Calulate the lower bound of Keogh with the envelopes around the query
                             let (lb_keogh_query, keogh_diffs_query) = lb_keogh_cumulative(
                                 &order, &t, &uo, &lo, j, mean, std, bsf, false, &cost_fn,
                             );
 
                             if lb_keogh_query < bsf {
+                                // Calulate the lower bound of Keogh with the envelopes around the candidate
                                 let (lb_keogh_candidate, keogh_diffs_candidate) =
                                     lb_keogh_cumulative(
                                         &order, &qo, &u_buff, &l_buff, i_cap, mean, std, bsf, true,
@@ -433,6 +433,8 @@ where
                                                 .map(|entry| (*entry - mean) / std)
                                                 .collect();
                                         }
+
+                                        // Calculate the DTW distance
                                         let dist = dtw::ucr_improved::dtw(
                                             &tz,
                                             &query,

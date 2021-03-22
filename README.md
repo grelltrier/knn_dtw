@@ -20,7 +20,7 @@ Add the dependency to your Cargo.toml and you can use the provided functions
   (upper and lower envelope at first and last point are the value of the query at that point)
 
 ## Potential for improvements
-- Allow time series of unequal lengths to be compared (The calculation of the lower bounds poses the problem)
+- Allow time series of unequal lengths to be compared (The calculation of the lower bound of Keogh poses the problem)
 - Change envelope of the candidate subsequences too, so they also take the boundary constraint into consideration 
   (upper and lower envelope at first and last point should be the value of the candidate sequence at that point)
 - Calculate the lower bound of the data sequence only when needed
