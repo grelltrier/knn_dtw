@@ -1,9 +1,9 @@
-#[cfg(test)]
+use std::time::Duration;
+
+use super::*;
+
 #[test]
 fn knn_search() {
-    use crate::ucr::*;
-    use std::time::Duration;
-
     // Input parameters
     let query_name = "Query2.txt";
     let data_name = "Data.txt";
@@ -54,8 +54,6 @@ fn knn_search() {
 
 #[test]
 fn insert_k_bsf() {
-    use crate::ucr::insert_into_k_bsf;
-
     // Intialize variables
     let k = 1;
     let mut test_k_best = vec![(0, f64::INFINITY); k]; // [(0, f64::INFINITY)]
@@ -134,25 +132,25 @@ fn lb_kim_hierarchy_test() {
     let cost_fn = dtw_cost::sq_l2_dist_f64;
 
     // q1
-    let lb = crate::ucr::lb_kim_hierarchy(&t1, &q1, j, mean, std, bsf1, &cost_fn);
+    let lb = lb_kim_hierarchy(&t1, &q1, j, mean, std, bsf1, &cost_fn);
     assert!((lb - 64.0).abs() < 0.0000000001);
-    let lb = crate::ucr::lb_kim_hierarchy(&t1, &q1, j, mean, std, bsf2, &cost_fn);
+    let lb = lb_kim_hierarchy(&t1, &q1, j, mean, std, bsf2, &cost_fn);
     assert!((lb - 100.0).abs() < 0.0000000001);
-    let lb = crate::ucr::lb_kim_hierarchy(&t1, &q1, j, mean, std, bsf3, &cost_fn);
+    let lb = lb_kim_hierarchy(&t1, &q1, j, mean, std, bsf3, &cost_fn);
     assert!((lb - 116.0).abs() < 0.0000000001);
 
     // q2
-    let lb = crate::ucr::lb_kim_hierarchy(&t1, &q2, j, mean, std, bsf1, &cost_fn);
+    let lb = lb_kim_hierarchy(&t1, &q2, j, mean, std, bsf1, &cost_fn);
     assert!((lb - 68.0).abs() < 0.0000000001);
-    let lb = crate::ucr::lb_kim_hierarchy(&t1, &q2, j, mean, std, bsf2, &cost_fn);
+    let lb = lb_kim_hierarchy(&t1, &q2, j, mean, std, bsf2, &cost_fn);
     assert!((lb - 105.0).abs() < 0.0000000001);
-    let lb = crate::ucr::lb_kim_hierarchy(&t1, &q2, j, mean, std, bsf3, &cost_fn);
+    let lb = lb_kim_hierarchy(&t1, &q2, j, mean, std, bsf3, &cost_fn);
     assert!((lb - 121.0).abs() < 0.0000000001);
 
     // Test steps
     // LB > bsf after checking the first point
     // dist > bsf
-    let lb = crate::ucr::lb_kim_hierarchy(
+    let lb = lb_kim_hierarchy(
         &[
             2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         ],
@@ -167,7 +165,7 @@ fn lb_kim_hierarchy_test() {
 
     // LB > bsf after checking the second point
     // dist > bsf
-    let lb = crate::ucr::lb_kim_hierarchy(
+    let lb = lb_kim_hierarchy(
         &[
             0., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         ],
@@ -182,7 +180,7 @@ fn lb_kim_hierarchy_test() {
 
     // LB > bsf after checking the third point
     // dist > bsf
-    let lb = crate::ucr::lb_kim_hierarchy(
+    let lb = lb_kim_hierarchy(
         &[
             0., 0., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         ],
@@ -196,7 +194,7 @@ fn lb_kim_hierarchy_test() {
     assert!((lb - 1.0).abs() < 0.0000000001);
 
     // The fourth point is never checked so lb=0 < bsf
-    let lb = crate::ucr::lb_kim_hierarchy(
+    let lb = lb_kim_hierarchy(
         &[
             0., 0., 0., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         ],
@@ -213,7 +211,7 @@ fn lb_kim_hierarchy_test() {
 
     // LB > bsf after checking the first point from the back
     // dist > bsf
-    let lb = crate::ucr::lb_kim_hierarchy(
+    let lb = lb_kim_hierarchy(
         &[
             0., 0., 0., 0., 0., 0., 0., 2., 0., 0., 0., 0., 0., 0., 0., 0.,
         ],
@@ -228,7 +226,7 @@ fn lb_kim_hierarchy_test() {
 
     // LB > bsf after checking the second point from the back
     // dist > bsf
-    let lb = crate::ucr::lb_kim_hierarchy(
+    let lb = lb_kim_hierarchy(
         &[
             0., 0., 0., 0., 0., 0., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         ],
@@ -243,7 +241,7 @@ fn lb_kim_hierarchy_test() {
 
     // LB > bsf after checking the third point from the back
     // dist > bsf
-    let lb = crate::ucr::lb_kim_hierarchy(
+    let lb = lb_kim_hierarchy(
         &[
             0., 0., 0., 0., 0., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         ],
@@ -257,7 +255,7 @@ fn lb_kim_hierarchy_test() {
     assert!((lb - 1.0).abs() < 0.0000000001);
 
     // The fourth point from the back is never checked so lb=0 < bsf
-    let lb = crate::ucr::lb_kim_hierarchy(
+    let lb = lb_kim_hierarchy(
         &[
             0., 0., 0., 0., 2., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
         ],
@@ -277,7 +275,7 @@ fn upper_lower_lemire_tests() {
 
     // w = 0
     let w = 0;
-    let (lower, upper) = crate::ucr::upper_lower_lemire(&time_series, w);
+    let (lower, upper) = upper_lower_lemire(&time_series, w);
     let correct_lower = [0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
     let correct_upper = [0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
 
@@ -288,7 +286,7 @@ fn upper_lower_lemire_tests() {
 
     // w = 3
     let w = 3;
-    let (lower, upper) = crate::ucr::upper_lower_lemire(&time_series, w);
+    let (lower, upper) = upper_lower_lemire(&time_series, w);
     let correct_lower = [0., 0., 0., 0., 1., 2., 3., 4., 5., 6.];
     let correct_upper = [3., 4., 5., 6., 7., 8., 9., 9., 9., 9.];
 
@@ -300,7 +298,7 @@ fn upper_lower_lemire_tests() {
     // Different time series
     let time_series = [0., 1., 2., 3., -4., -5., -6., -7., -8., -9.];
     let w = 3;
-    let (lower, upper) = crate::ucr::upper_lower_lemire(&time_series, w);
+    let (lower, upper) = upper_lower_lemire(&time_series, w);
     let correct_lower = [0., -4., -5., -6., -7., -8., -9., -9., -9., -9.];
     let correct_upper = [3., 3., 3., 3., 3., 3., 3., -4., -5., -6.];
 
@@ -312,7 +310,7 @@ fn upper_lower_lemire_tests() {
     // Different time series (Decreasing from first to second point)
     let time_series = [10., 1., 2., 3., -4., -5., -6., -7., -8., -9.];
     let w = 3;
-    let (lower, upper) = crate::ucr::upper_lower_lemire(&time_series, w);
+    let (lower, upper) = upper_lower_lemire(&time_series, w);
     let correct_lower = [1., -4., -5., -6., -7., -8., -9., -9., -9., -9.];
     let correct_upper = [10., 10., 10., 10., 3., 3., 3., -4., -5., -6.];
 
@@ -328,7 +326,7 @@ fn upper_lower_lemire_w_greater_than_time_series_len_tests() {
     // w > time_series.len()
     let time_series = [0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
     let w = 20;
-    let (lower, upper) = crate::ucr::upper_lower_lemire(&time_series, w);
+    let (lower, upper) = upper_lower_lemire(&time_series, w);
     let correct_lower = [0., 0., 0., 0., 0., 0., 0., 0., 0., 0.];
     let correct_upper = [9., 9., 9., 9., 9., 9., 9., 9., 9., 9.];
 

@@ -1,4 +1,4 @@
-use knn_dtw::ucr::*;
+use knn_dtw::*;
 
 fn main() {
     // Input parameters
