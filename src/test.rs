@@ -3,6 +3,8 @@ use std::time::Duration;
 use super::*;
 
 #[test]
+// Test case F1
+// Use Data.txt and Query2.txt to find the 1-nn with a warping window of 0.1
 fn knn_search() {
     // Input parameters
     let query_name = "Query2.txt";
@@ -53,6 +55,8 @@ fn knn_search() {
 }
 
 #[test]
+// Test case F2
+// Test the insert_into_k_bsf function with various input
 fn insert_k_bsf() {
     // Intialize variables
     let k = 1;
@@ -116,6 +120,8 @@ fn insert_k_bsf() {
 }
 
 #[test]
+// Test case F3
+// Test the lb_kim_hierarchy function with various sequences
 fn lb_kim_hierarchy_test() {
     let t1 = [
         1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18.,
@@ -270,6 +276,8 @@ fn lb_kim_hierarchy_test() {
 }
 
 #[test]
+// Test case F4
+//Test the upper_lower_lemire function with various sequences and warping windows
 fn upper_lower_lemire_tests() {
     let time_series = [0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
 
@@ -322,6 +330,9 @@ fn upper_lower_lemire_tests() {
 
 #[test]
 #[should_panic]
+// Test case F5
+// Test the upper_lower_lemire function with a warping window
+// greater than the length of the sequence
 fn upper_lower_lemire_w_greater_than_time_series_len_tests() {
     // w > time_series.len()
     let time_series = [0., 1., 2., 3., 4., 5., 6., 7., 8., 9.];
