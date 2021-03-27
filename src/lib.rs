@@ -438,7 +438,7 @@ where
                                         }
 
                                         // Calculate the DTW distance
-                                        let dist = dtw::ucr_improved::dtw(
+                                        let dist = dtw::rpruned::dtw(
                                             &tz,
                                             &query,
                                             Some(&cb),
